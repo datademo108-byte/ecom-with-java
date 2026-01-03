@@ -7,12 +7,61 @@
         response.sendRedirect("products.jsp");
         return;
     }
+    
+    // Declare variables at page scope so they're accessible throughout
+    String productName = "";
+    String description = "";
+    double price = 0;
+    String category = "";
+    int stock = 0;
+    String image = "";
+    boolean outOfStock = false;
+    String imagePath = "https://via.placeholder.com/500x400?text=No+Image";
+    
+    Connection conn = null;
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    
+    try {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/ecom","root","Agr@hari567#");
+        
+        String sql = "SELECT * FROM products WHERE id = ?";
+        ps = conn.prepareStatement(sql);
+        ps.setInt(1, Integer.parseInt(productId));
+        rs = ps.executeQuery();
+        
+        if(rs.next()) {
+            productName = rs.getString("name");
+            description = rs.getString("description");
+            price = rs.getDouble("price");
+            category = rs.getString("category");
+            stock = rs.getInt("stock_quantity");
+            image = rs.getString("image");
+            outOfStock = stock <= 0;
+            
+            // Handle image path
+            if(image == null || image.isEmpty() || image.equals("default.jpg")) {
+                imagePath = "https://via.placeholder.com/500x400?text=No+Image";
+            } else if(!image.startsWith("http")) {
+                imagePath = "uploads/" + image;
+            } else {
+                imagePath = image;
+            }
+        }
+    } catch(Exception e) {
+        e.printStackTrace();
+    } finally {
+        try { if(rs != null) rs.close(); } catch(Exception e) {}
+        try { if(ps != null) ps.close(); } catch(Exception e) {}
+        try { if(conn != null) conn.close(); } catch(Exception e) {}
+    }
 %>
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Product Details - Ecommerce</title>
+<title><%= productName.isEmpty() ? "Product Details" : productName %> - Ecommerce</title>
 <link href="css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
 <style>
@@ -55,264 +104,217 @@
 <jsp:include page="navbar.jsp"></jsp:include>
 
 <div class="container mt-4">
-    <%
-        Connection conn = null;
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/ecom","root","Agr@hari567#");
-            
-            String sql = "SELECT * FROM products WHERE id = ?";
-            ps = conn.prepareStatement(sql);
-            ps.setInt(1, Integer.parseInt(productId));
-            rs = ps.executeQuery();
-            
-            if(rs.next()) {
-                String productName = rs.getString("name");
-                String description = rs.getString("description");
-                double price = rs.getDouble("price");
-                String category = rs.getString("category");
-                int stock = rs.getInt("stock_quantity");
-                String image = rs.getString("image");
-                
-                // Handle image path
-                String imagePath = image;
-                if(image == null || image.isEmpty() || image.equals("default.jpg")) {
-                    imagePath = "https://via.placeholder.com/500x400?text=No+Image";
-                } else if(!image.startsWith("http")) {
-                    imagePath = "uploads/" + image;
-                }
-                
-                boolean outOfStock = stock <= 0;
-    %>
-    
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="index.jsp">Home</a></li>
-            <li class="breadcrumb-item"><a href="products.jsp">Products</a></li>
-            <% if(category != null && !category.isEmpty()) { %>
-            <li class="breadcrumb-item"><a href="products.jsp?category=<%= java.net.URLEncoder.encode(category, "UTF-8") %>"><%= category %></a></li>
-            <% } %>
-            <li class="breadcrumb-item active" aria-current="page"><%= productName %></li>
-        </ol>
-    </nav>
-    
-    <div class="row">
-        <!-- Product Images -->
-        <div class="col-md-6">
-            <div class="mb-3">
-                <img id="mainImage" src="<%= imagePath %>" 
-                     alt="<%= productName %>" 
-                     class="product-image"
-                     onerror="this.src='https://via.placeholder.com/500x400?text=Image+Error'">
-            </div>
-            
-            <!-- Thumbnails (if you have multiple images) -->
-            <!--
-            <div class="d-flex gap-2">
-                <img src="<%= imagePath %>" class="thumbnail active" onclick="changeImage(this.src)">
-                <img src="image2.jpg" class="thumbnail" onclick="changeImage(this.src)">
-                <img src="image3.jpg" class="thumbnail" onclick="changeImage(this.src)">
-            </div>
-            -->
+    <% if(productName.isEmpty()) { %>
+        <!-- Product not found -->
+        <div class="alert alert-danger">
+            <h4>Product Not Found</h4>
+            <p>The product you're looking for doesn't exist or has been removed.</p>
+            <a href="products.jsp" class="btn btn-primary">Browse Products</a>
         </div>
+    <% } else { %>
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="index.jsp">Home</a></li>
+                <li class="breadcrumb-item"><a href="products.jsp">Products</a></li>
+                <% if(category != null && !category.isEmpty()) { %>
+                <li class="breadcrumb-item"><a href="products.jsp?category=<%= java.net.URLEncoder.encode(category, "UTF-8") %>"><%= category %></a></li>
+                <% } %>
+                <li class="breadcrumb-item active" aria-current="page"><%= productName %></li>
+            </ol>
+        </nav>
         
-        <!-- Product Details -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <% if(category != null && !category.isEmpty()) { %>
-                    <span class="badge bg-primary mb-2"><%= category %></span>
-                    <% } %>
-                    
-                    <% if(outOfStock) { %>
-                    <span class="badge bg-danger mb-2">Out of Stock</span>
-                    <% } %>
-                    
-                    <h1 class="card-title"><%= productName %></h1>
-                    
-                    <div class="mb-3">
-                        <span class="price-tag">$<%= String.format("%.2f", price) %></span>
-                        <% if(!outOfStock) { %>
-                        <span class="text-success ms-3">
-                            <i class="bi bi-check-circle"></i> 
-                            <%= stock %> available
-                        </span>
-                        <% } else { %>
-                        <span class="text-danger ms-3">
-                            <i class="bi bi-x-circle"></i> 
-                            Out of Stock
-                        </span>
+        <div class="row">
+            <!-- Product Images -->
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <img id="mainImage" src="<%= imagePath %>" 
+                         alt="<%= productName %>" 
+                         class="product-image"
+                         onerror="this.src='https://via.placeholder.com/500x400?text=Image+Error'">
+                </div>
+            </div>
+            
+            <!-- Product Details -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <% if(category != null && !category.isEmpty()) { %>
+                        <span class="badge bg-primary mb-2"><%= category %></span>
                         <% } %>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <h5>Description</h5>
-                        <p><%= description != null ? description : "No description available." %></p>
-                    </div>
-                    
-                    <!-- Specifications Table -->
-                    <div class="mb-4">
-                        <h5>Product Details</h5>
-                        <table class="table specs-table">
-                            <tbody>
-                                <tr>
-                                    <td><strong>Product ID</strong></td>
-                                    <td>#<%= productId %></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Category</strong></td>
-                                    <td><%= category != null ? category : "Not specified" %></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Availability</strong></td>
-                                    <td>
-                                        <% if(!outOfStock) { %>
-                                        <span class="text-success">In Stock</span>
-                                        <% } else { %>
-                                        <span class="text-danger">Out of Stock</span>
-                                        <% } %>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Shipping</strong></td>
-                                    <td>Free shipping on orders over $50</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- Add to Cart Section -->
-                    <div class="card bg-light">
-                        <div class="card-body">
+                        
+                        <% if(outOfStock) { %>
+                        <span class="badge bg-danger mb-2">Out of Stock</span>
+                        <% } %>
+                        
+                        <h1 class="card-title"><%= productName %></h1>
+                        
+                        <div class="mb-3">
+                            <span class="price-tag">$<%= String.format("%.2f", price) %></span>
                             <% if(!outOfStock) { %>
-                            <div class="row align-items-center">
-                                <div class="col-md-4 mb-2 mb-md-0">
-                                    <div class="input-group">
-                                        <button class="btn btn-outline-secondary" type="button" onclick="decreaseQuantity()">-</button>
-                                        <input type="number" id="quantity" class="form-control quantity-input" value="1" min="1" max="<%= stock %>">
-                                        <button class="btn btn-outline-secondary" type="button" onclick="increaseQuantity()">+</button>
+                            <span class="text-success ms-3">
+                                <i class="bi bi-check-circle"></i> 
+                                <%= stock %> available
+                            </span>
+                            <% } else { %>
+                            <span class="text-danger ms-3">
+                                <i class="bi bi-x-circle"></i> 
+                                Out of Stock
+                            </span>
+                            <% } %>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h5>Description</h5>
+                            <p><%= description != null ? description : "No description available." %></p>
+                        </div>
+                        
+                        <!-- Specifications Table -->
+                        <div class="mb-4">
+                            <h5>Product Details</h5>
+                            <table class="table specs-table">
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Product ID</strong></td>
+                                        <td>#<%= productId %></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Category</strong></td>
+                                        <td><%= category != null ? category : "Not specified" %></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Availability</strong></td>
+                                        <td>
+                                            <% if(!outOfStock) { %>
+                                            <span class="text-success">In Stock</span>
+                                            <% } else { %>
+                                            <span class="text-danger">Out of Stock</span>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Shipping</strong></td>
+                                        <td>Free shipping on orders over $50</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Add to Cart Section -->
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <% if(!outOfStock) { %>
+                                <div class="row align-items-center">
+                                    <div class="col-md-4 mb-2 mb-md-0">
+                                        <div class="input-group">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="decreaseQuantity()">-</button>
+                                            <input type="number" id="quantity" class="form-control quantity-input" value="1" min="1" max="<%= stock %>">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="increaseQuantity()">+</button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <button id="addToCartBtn" class="btn btn-success w-100" onclick="addToCart()">
+                                            <i class="bi bi-cart-plus"></i> Add to Cart
+                                        </button>
                                     </div>
                                 </div>
-                                <div class="col-md-8">
-                                    <button id="addToCartBtn" class="btn btn-success w-100" onclick="addToCart()">
-                                        <i class="bi bi-cart-plus"></i> Add to Cart
+                                <% } else { %>
+                                <div class="text-center">
+                                    <button class="btn btn-secondary" disabled>
+                                        <i class="bi bi-x-circle"></i> Currently Unavailable
                                     </button>
+                                    <p class="text-muted mt-2">Get notified when this product is back in stock</p>
+                                    <div class="input-group mt-2">
+                                        <input type="email" class="form-control" placeholder="Enter your email">
+                                        <button class="btn btn-primary">Notify Me</button>
+                                    </div>
                                 </div>
+                                <% } %>
                             </div>
-                            <% } else { %>
-                            <div class="text-center">
-                                <button class="btn btn-secondary" disabled>
-                                    <i class="bi bi-x-circle"></i> Currently Unavailable
-                                </button>
-                                <p class="text-muted mt-2">Get notified when this product is back in stock</p>
-                                <div class="input-group mt-2">
-                                    <input type="email" class="form-control" placeholder="Enter your email">
-                                    <button class="btn btn-primary">Notify Me</button>
-                                </div>
-                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="mt-3 d-flex gap-2">
+                            <button class="btn btn-outline-primary" onclick="shareProduct()">
+                                <i class="bi bi-share"></i> Share
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="addToWishlist()">
+                                <i class="bi bi-heart"></i> Add to Wishlist
+                            </button>
+                            <% 
+                                Boolean isAdmin = (session != null) ? (Boolean) session.getAttribute("is_admin") : false;
+                                if(Boolean.TRUE.equals(isAdmin)) {
+                            %>
+                            <a href="admin/edit-product.jsp?id=<%= productId %>" class="btn btn-outline-warning ms-auto">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
                             <% } %>
                         </div>
                     </div>
-                    
-                    <!-- Action Buttons -->
-                    <div class="mt-3 d-flex gap-2">
-                        <button class="btn btn-outline-primary" onclick="shareProduct()">
-                            <i class="bi bi-share"></i> Share
-                        </button>
-                        <button class="btn btn-outline-secondary" onclick="addToWishlist()">
-                            <i class="bi bi-heart"></i> Add to Wishlist
-                        </button>
-                        <% 
-                            Boolean isAdmin = (session != null) ? (Boolean) session.getAttribute("is_admin") : false;
-                            if(Boolean.TRUE.equals(isAdmin)) {
-                        %>
-                        <a href="admin/edit-product.jsp?id=<%= productId %>" class="btn btn-outline-warning ms-auto">
-                            <i class="bi bi-pencil"></i> Edit
-                        </a>
-                        <% } %>
-                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Related Products -->
-    <div class="mt-5">
-        <h3>Related Products</h3>
-        <div class="row">
-            <%
-                // Get related products (same category)
-                if(category != null && !category.isEmpty()) {
-                    String relatedSql = "SELECT * FROM products WHERE category = ? AND id != ? LIMIT 4";
-                    PreparedStatement relatedPs = conn.prepareStatement(relatedSql);
-                    relatedPs.setString(1, category);
-                    relatedPs.setInt(2, Integer.parseInt(productId));
-                    ResultSet relatedRs = relatedPs.executeQuery();
-                    
-                    while(relatedRs.next()) {
-                        int relatedId = relatedRs.getInt("id");
-                        String relatedName = relatedRs.getString("name");
-                        double relatedPrice = relatedRs.getDouble("price");
-                        String relatedImage = relatedRs.getString("image");
+        
+        <!-- Related Products -->
+        <div class="mt-5">
+            <h3>Related Products</h3>
+            <div class="row">
+                <%
+                    // Get related products (same category)
+                    if(category != null && !category.isEmpty()) {
+                        Connection conn2 = null;
+                        PreparedStatement relatedPs = null;
+                        ResultSet relatedRs = null;
                         
-                        String relatedImagePath = relatedImage;
-                        if(relatedImage == null || relatedImage.isEmpty() || relatedImage.equals("default.jpg")) {
-                            relatedImagePath = "https://via.placeholder.com/200x150?text=No+Image";
-                        } else if(!relatedImage.startsWith("http")) {
-                            relatedImagePath = "uploads/" + relatedImage;
-                        }
-            %>
-            <div class="col-md-3 col-sm-6 mb-3">
-                <div class="card h-100">
-                    <img src="<%= relatedImagePath %>" class="card-img-top" alt="<%= relatedName %>" style="height: 150px; object-fit: cover;">
-                    <div class="card-body">
-                        <h6 class="card-title"><%= relatedName %></h6>
-                        <p class="card-text price">$<%= String.format("%.2f", relatedPrice) %></p>
-                        <a href="product-details.jsp?id=<%= relatedId %>" class="btn btn-sm btn-outline-primary w-100">
-                            View Details
-                        </a>
+                        try {
+                            conn2 = DriverManager.getConnection("jdbc:mysql://localhost:3306/ecom","root","Agr@hari567#");
+                            String relatedSql = "SELECT * FROM products WHERE category = ? AND id != ? LIMIT 4";
+                            relatedPs = conn2.prepareStatement(relatedSql);
+                            relatedPs.setString(1, category);
+                            relatedPs.setInt(2, Integer.parseInt(productId));
+                            relatedRs = relatedPs.executeQuery();
+                            
+                            while(relatedRs.next()) {
+                                int relatedId = relatedRs.getInt("id");
+                                String relatedName = relatedRs.getString("name");
+                                double relatedPrice = relatedRs.getDouble("price");
+                                String relatedImage = relatedRs.getString("image");
+                                
+                                String relatedImagePath = relatedImage;
+                                if(relatedImage == null || relatedImage.isEmpty() || relatedImage.equals("default.jpg")) {
+                                    relatedImagePath = "https://via.placeholder.com/200x150?text=No+Image";
+                                } else if(!relatedImage.startsWith("http")) {
+                                    relatedImagePath = "uploads/" + relatedImage;
+                                } else {
+                                    relatedImagePath = relatedImage;
+                                }
+                %>
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card h-100">
+                        <img src="<%= relatedImagePath %>" class="card-img-top" alt="<%= relatedName %>" style="height: 150px; object-fit: cover;">
+                        <div class="card-body">
+                            <h6 class="card-title"><%= relatedName %></h6>
+                            <p class="card-text text-success fw-bold">$<%= String.format("%.2f", relatedPrice) %></p>
+                            <a href="product-details.jsp?id=<%= relatedId %>" class="btn btn-sm btn-outline-primary w-100">
+                                View Details
+                            </a>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <%
+                <%
+                            }
+                        } catch(Exception e) {
+                            e.printStackTrace();
+                        } finally {
+                            try { if(relatedRs != null) relatedRs.close(); } catch(Exception e) {}
+                            try { if(relatedPs != null) relatedPs.close(); } catch(Exception e) {}
+                            try { if(conn2 != null) conn2.close(); } catch(Exception e) {}
+                        }
                     }
-                    relatedRs.close();
-                    relatedPs.close();
-                }
-            %>
+                %>
+            </div>
         </div>
-    </div>
-    
-    <%
-            } else {
-    %>
-    <div class="alert alert-danger">
-        <h4>Product Not Found</h4>
-        <p>The product you're looking for doesn't exist or has been removed.</p>
-        <a href="products.jsp" class="btn btn-primary">Browse Products</a>
-    </div>
-    <%
-            }
-            
-        } catch(Exception e) {
-            e.printStackTrace();
-    %>
-    <div class="alert alert-danger">
-        <h4>Error Loading Product</h4>
-        <p>An error occurred while loading the product details. Please try again later.</p>
-        <a href="products.jsp" class="btn btn-primary">Back to Products</a>
-    </div>
-    <%
-        } finally {
-            try { if(rs != null) rs.close(); } catch(Exception e) {}
-            try { if(ps != null) ps.close(); } catch(Exception e) {}
-            try { if(conn != null) conn.close(); } catch(Exception e) {}
-        }
-    %>
+    <% } %>
 </div>
 
 <!-- Footer -->
