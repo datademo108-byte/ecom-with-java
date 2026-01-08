@@ -1,5 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"
     pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
 <!DOCTYPE html>
 <html>
 <head>
@@ -36,6 +37,11 @@
           <a class="nav-link active" aria-current="page" href="index.jsp">Home</a>
         </li>
         
+        <!-- Products Link (Always visible) -->
+        <li class="nav-item">
+          <a class="nav-link active" href="products.jsp">Products</a>
+        </li>
+        
         <!-- START: User Authentication Logic -->
         <%
           // Get the current session (false means don't create new session if it doesn't exist)
@@ -45,6 +51,7 @@
           String userName = null;
           boolean isLoggedIn = false;
           boolean isAdmin = false;
+          int cartCount = 0;
           
           // Check if session exists
           if(userSession != null) {
@@ -58,6 +65,40 @@
             // Check if user is admin
             Object adminAttr = userSession.getAttribute("is_admin");
             isAdmin = (adminAttr != null && (Boolean) adminAttr);
+            
+            // Get cart count for logged-in users
+            if(isLoggedIn) {
+                int userId = 0;
+                Object userIdAttr = userSession.getAttribute("user_id");
+                if(userIdAttr != null) {
+                    userId = (Integer) userIdAttr;
+                    
+                    // Get cart count from database
+                    Connection conn = null;
+                    PreparedStatement ps = null;
+                    ResultSet rs = null;
+                    
+                    try {
+                        Class.forName("com.mysql.cj.jdbc.Driver");
+                        conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/ecom","root","Agr@hari567#");
+                        
+                        String sql = "SELECT COUNT(*) as count FROM cart WHERE user_id = ?";
+                        ps = conn.prepareStatement(sql);
+                        ps.setInt(1, userId);
+                        rs = ps.executeQuery();
+                        
+                        if(rs.next()) {
+                            cartCount = rs.getInt("count");
+                        }
+                    } catch(Exception e) {
+                        e.printStackTrace();
+                    } finally {
+                        try { if(rs != null) rs.close(); } catch(Exception e) {}
+                        try { if(ps != null) ps.close(); } catch(Exception e) {}
+                        try { if(conn != null) conn.close(); } catch(Exception e) {}
+                    }
+                }
+            }
           }
           
           // Conditional Display based on login status
@@ -96,7 +137,7 @@
             
             <% if(isAdmin) { %>
             <!-- Admin Dashboard Link in dropdown too -->
-            <li><a class="dropdown-item" href="dashboard.jsp" style="color: #dc3545;">
+            <li><a class="dropdown-item" href="admin/dashboard.jsp" style="color: #dc3545;">
                 <i class="bi bi-shield-lock"></i> Admin Dashboard
             </a></li>
             <li><hr class="dropdown-divider"></li>
@@ -117,10 +158,16 @@
           </ul>
         </li>
         
-        <!-- Cart Link (Visible when logged in) -->
+        <!-- Cart Link with Count (Visible when logged in) -->
         <li class="nav-item">
-          <a class="nav-link active" href="cart.jsp">
+          <a class="nav-link active position-relative" href="cart.jsp">
             <i class="bi bi-cart3"></i> Cart
+            <% if(cartCount > 0) { %>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                <%= cartCount %>
+                <span class="visually-hidden">items in cart</span>
+            </span>
+            <% } %>
           </a>
         </li>
         
@@ -139,11 +186,6 @@
           <a class="nav-link active" href="register.jsp">Register</a>
         </li>
         
-          <!-- Register Link (Visible when NOT logged in) -->
-        <li class="nav-item">
-          <a class="nav-link active" href="products.jsp">Products</a>
-        </li>
-        
         <!-- Admin Login Link (Visible when NOT logged in) -->
         <li class="nav-item">
           <a class="nav-link active" href="admin-login.jsp" style="color: #ff0000;">
@@ -160,9 +202,11 @@
       <!-- End of Left side navigation -->
       
       <!-- Search Form (Always visible) -->
-      <form class="d-flex">
-        <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
-        <button class="btn btn-outline-dark" type="submit">Search</button>
+      <form class="d-flex" action="products.jsp" method="get">
+        <input class="form-control me-2" type="search" name="search" placeholder="Search products..." aria-label="Search">
+        <button class="btn btn-outline-dark" type="submit">
+            <i class="bi bi-search"></i>
+        </button>
       </form>
       
     </div>
@@ -171,6 +215,8 @@
 </nav>
 <!-- End of Navigation Bar -->
 
+<!-- Spacer for fixed navbar -->
+<div style="padding-top: 70px;"></div>
 
 </body>
 </html>
