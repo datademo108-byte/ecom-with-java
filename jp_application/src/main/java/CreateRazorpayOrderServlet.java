@@ -15,8 +15,8 @@ import jakarta.servlet.http.HttpSession;
 public class CreateRazorpayOrderServlet extends HttpServlet {
     
     // Replace with your actual Razorpay test credentials
-    private static final String RAZORPAY_KEY_ID = "rzp_test_qwUWbYhsbam1oJ";
-    private static final String RAZORPAY_KEY_SECRET = "NKuKFl5Q2PcW5poRLqXNaqOE";
+    private static final String RAZORPAY_KEY_ID = "";
+    private static final String RAZORPAY_KEY_SECRET = "";
     
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
@@ -154,4 +154,5 @@ public class CreateRazorpayOrderServlet extends HttpServlet {
             return null;
         }
     }
+
 }
