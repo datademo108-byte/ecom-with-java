@@ -441,7 +441,7 @@ async function initiatePayment() {
         
         // Step 3: Initialize Razorpay Checkout
         const options = {
-            key: orderData.razorpayKey || 'rzp_test_qwUWbYhsbam1oJ', // You'll set this in servlet
+            key: orderData.razorpayKey || '', // You'll set this in servlet
             amount: orderData.amount,
             currency: orderData.currency || 'INR',
             name: 'Your Ecommerce Store',
@@ -607,4 +607,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 </body>
+
 </html>
